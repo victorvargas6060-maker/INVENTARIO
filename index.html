@@ -184,7 +184,7 @@
                             type="email"
                             id="login-correo"
                             required
-                            value="victor.navarro@almacenpro.pe"
+                            value=""
                             class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono"
                         >
                     </div>
@@ -197,13 +197,13 @@
                             type="password"
                             id="login-clave"
                             required
-                            value="123456"
+                            value=""
                             class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm"
                         >
                     </div>
 
                     <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-[#0e1b38] hover:bg-[#152852] border border-blue-500/40 text-blue-200 font-bold text-xs sm:text-sm transition cursor-pointer">
-                        Ingresar con Credenciales
+                        Ingresar
                     </button>
                 </form>
             </aside>
@@ -588,7 +588,7 @@
                                 <th class="p-3">Movimiento</th>
                                 <th class="p-3">Código / Material</th>
                                 <th class="p-3">Cantidad</th>
-                                <th class="p-3">Costo Unit.</th>
+                  -              <th class="p-3">Costo Unit.</th>
                                 <th class="p-3">Subtotal (S/)</th>
                                 <th class="p-3">Detalle</th>
                                 <th class="p-3 rounded-tr-lg">Perfil</th>
@@ -704,39 +704,38 @@
             </section>
         </main>
     </div>
-
-    <!-- ==================== MODAL CREAR CUENTA ==================== -->
-    <div id="modal-cuenta" onclick="cerrarPorFondo(event, 'modal-cuenta')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
-        <div class="card-surface rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-extrabold text-white">Crear mi Cuenta en AlmacénPRO</h3>
-                <button type="button" onclick="cerrarModal('modal-cuenta')" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
-            </div>
-            <form onsubmit="crearCuentaRapida(event)" class="space-y-3.5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo</label>
-                    <input type="text" id="reg-nombre" value="Victor Navarro" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Correo Electrónico</label>
-                    <input type="email" id="reg-correo" value="victor.navarro@almacenpro.pe" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Perfil Inicial</label>
-                    <select id="reg-perfil" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
-                        <option value="Admin">Admin</option>
-                        <option value="Mentor">Mentor</option>
-                        <option value="Estudiante">Estudiante</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold cursor-pointer">
-                    Crear y Entrar al Sistema
-                </button>
-            </form>
-        </div>
+<!-- ============ MODAL CREAR CUENTA ============ -->
+<div id="modal-cuenta" onclick="cerrarPorFondo(event, 'modal-cuenta')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
+  <div class="card-surface rounded-2xl max-w-md w-full p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-extrabold text-white">Crear mi cuenta</h3>
+      <button type="button" onclick="cerrarModal('modal-cuenta')" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
     </div>
+    <p class="text-slate-400 text-sm -mt-2">Crea tu cuenta para empezar</p>
 
-    <!-- ==================== MODAL QR MATERIAL ==================== -->
+    <form onsubmit="crearCuentaRapida(event)" class="space-y-3.5">
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo</label>
+        <input type="text" id="reg-nombre" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1">Correo Electrónico</label>
+        <input type="email" id="reg-correo" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1">Contraseña</label>
+        <input type="password" id="reg-pass" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1">Confirmar Contraseña</label>
+        <input type="password" id="reg-pass2" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+      </div>
+      <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold cursor-pointer">
+        Crear Cuenta
+      </button>
+    </form>
+  </div>
+</div>    <!-- ==================== MODAL QR MATERIAL ==================== -->
     <div id="modal-qr" onclick="cerrarPorFondo(event, 'modal-qr')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
         <div class="card-surface rounded-2xl max-w-sm w-full p-6 text-center space-y-4">
             <div class="flex items-center justify-between">
@@ -1619,7 +1618,23 @@
         });
 
         seleccionarPerfil(sesion.perfil || "Admin");
-        renderTodo();
+        renderTodo();function crearCuentaRapida(e){
+  e.preventDefault();
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const correo = document.getElementById('reg-correo').value.trim().toLowerCase();
+  const pass = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  if(pass !== pass2){ alert('Las contraseñas no coinciden'); return; }
+  let usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+  if(usuarios.find(u => u.correo === correo)){ alert('Ese correo ya existe'); return; }
+  const nuevo = { nombre: nombre, correo: correo, pass: pass, perfil: usuarios.length === 0 ? 'Admin' : 'Estudiante' };
+  usuarios.push(nuevo);
+  localStorage.setItem('usuarios', JSON.stringify(usuarios));
+  localStorage.setItem('sesion', JSON.stringify(nuevo));
+  alert('Cuenta creada, bienvenido ' + nombre);
+  cerrarModal('modal-cuenta');
+  location.reload();
+}
     </script>
 </body>
 </html>
