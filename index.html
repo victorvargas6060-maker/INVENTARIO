@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlmacénPRO v6.0 - Sistema de Inventario de Stock y Salida de Almacén</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-void: #040711;
+            --bg-navy: #070d1d;
+            --bg-card: #0b1329;
+            --bg-input: #060b19;
+            --border-subtle: #182544;
+            --accent-blue: #2563eb;
+            --accent-blue-bright: #3b82f6;
+            --accent-emerald: #10b981;
+        }
+
+        body {
+            background-color: var(--bg-void);
+            color: #f1f5f9;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .card-surface {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .input-dark {
+            background-color: var(--bg-input);
+            border: 1px solid #1e2d52;
+            color: #f8fafc;
+        }
+
+        .input-dark:focus {
+            outline: none;
+            border-color: var(--accent-blue-bright);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #modal-boleta, #modal-boleta * { visibility: visible; }
+            #modal-boleta { position: fixed; inset: 0; background: #ffffff !important; color: #0f172a !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Notificación Toast no bloqueante -->
+    <div id="toast-box" class="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== VISTA INICIAL (ESTILO ALMACÉNPRO v6.0) ==================== -->
+    <div id="view-landing" class="min-h-screen flex flex-col bg-[#040711]">
+        <header class="border-b border-[#141f3a] bg-[#060b18]/95 backdrop-blur sticky top-0 z-30">
+            <div class="max-w-[1380px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="irModuloDirecto('catalogo')">
+                    <div class="w-9 h-9 rounded-lg bg-[#0d1a38] border border-blue-500/40 flex items-center justify-center text-blue-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5 leading-none">
+                            <span class="font-extrabold text-base tracking-tight text-white">AlmacénPRO</span>
+                            <span class="text-xs font-bold text-blue-400">v6.0</span>
+                        </div>
+                        <span class="text-[10px] tracking-[0.14em] text-slate-400 uppercase font-semibold">STOCK Y SALIDA DE ALMACÉN</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                    <button type="button" onclick="enfocarCredenciales()" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 bg-[#0d162d] hover:bg-[#152242] border border-[#223259] transition cursor-pointer">
+                        Iniciar sesión
+                    </button>
+                    <button type="button" onclick="abrirModal('modal-cuenta')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition cursor-pointer shadow-lg shadow-blue-600/20">
+                        Crear mi cuenta ↗
+                    </button>
+                </div>
+            </div>
+
+            <div class="border-t border-[#101930] bg-[#050914]">
+                <div class="max-w-[1380px] mx-auto px-4 sm:px-6 h-10 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-5">
+                        <button type="button" onclick="mostrarPantalla('landing')" class="text-white font-semibold border-b-2 border-blue-500 h-10 flex items-center cursor-pointer">
+                            Inicio
+                        </button>
+                        <button type="button" onclick="irModuloDirecto('catalogo')" class="text-slate-400 hover:text-slate-200 transition h-10 flex items-center cursor-pointer">
+                            Catálogo de Materiales
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span>Guardado Automático (S/)</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-[1380px] w-full mx-auto px-4 sm:px-6 pt-7 pb-6 grid lg:grid-cols-12 gap-6 items-stretch">
+            <section class="lg:col-span-7 card-surface rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#0e1b38] text-blue-300 border border-blue-500/25">
+                            Control Logístico • Stock • Salidas • Kardex
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Sistema Activo
+                        </span>
+                    </div>
+
+                    <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1] text-white mb-4">
+                        Sistema de Inventario de <span class="text-blue-400">Stock y Salida de Almacén</span>
+                    </h1>
+
+                    <p class="text-slate-300/90 text-sm sm:text-base leading-relaxed max-w-2xl mb-6">
+                        Gestiona existencias físicas, ingresos de proveedores, despachos a obra o área y movimientos de Kardex en <strong class="text-white">Soles (S/)</strong>. Incluye etiquetas QR por material, alertas de stock crítico y emisión de guías o boletas imprimibles.
+                    </p>
+                </div>
+
+                <div class="relative rounded-xl overflow-hidden border border-[#1e2f54] bg-[#070d1d] h-56 sm:h-64 group">
+                    <img
+                        src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80"
+                        alt="Almacén Central Anaqueles y Lotes"
+                        class="w-full h-full object-cover opacity-75 group-hover:scale-[1.02] transition duration-500"
+                    >
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#040711] via-[#040711]/45 to-transparent"></div>
+
+                    <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase text-slate-200 bg-[#050914]/85 px-3 py-1.5 rounded-lg border border-white/10">
+                            <span>ALMACÉN CENTRAL</span>
+                            <span class="text-blue-400">•</span>
+                            <span>ANAQUELES Y LOTES</span>
+                        </div>
+
+                        <button type="button" onclick="irModuloDirecto('catalogo')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg transition cursor-pointer">
+                            Ver Catálogo →
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="lg:col-span-5 card-surface rounded-2xl p-6 sm:p-8 flex flex-col justify-center">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-extrabold text-white tracking-tight">Acceso Multi-Perfil</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1">Elige un perfil para probar el sistema al instante:</p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2.5 mb-4">
+                    <button type="button" id="pill-Admin" onclick="seleccionarPerfil('Admin')" class="perfil-pill py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold border-2 border-blue-500 bg-[#102247] text-white transition cursor-pointer">
+                        Admin
+                    </button>
+                    <button type="button" id="pill-Mentor" onclick="seleccionarPerfil('Mentor')" class="perfil-pill py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border border-[#1e2d52] bg-[#070d1d] text-slate-300 hover:border-slate-500 transition cursor-pointer">
+                        Mentor
+                    </button>
+                    <button type="button" id="pill-Estudiante" onclick="seleccionarPerfil('Estudiante')" class="perfil-pill py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border border-[#1e2d52] bg-[#070d1d] text-slate-300 hover:border-slate-500 transition cursor-pointer">
+                        Estudiante
+                    </button>
+                </div>
+
+                <button type="button" onclick="accesoLibreInmediato()" class="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs sm:text-sm tracking-wide shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition cursor-pointer">
+                    <span class="text-amber-300">⚡</span>
+                    <span>ACCESO LIBRE INMEDIATO (ENTRAR DIRECTO)</span>
+                </button>
+
+                <div class="relative my-5 text-center">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-[#182544]"></div>
+                    </div>
+                    <span class="relative bg-[#0b1329] px-3 text-xs text-slate-400">o con credenciales</span>
+                </div>
+
+                <form onsubmit="loginConCredenciales(event)" class="space-y-4">
+                    <div>
+                        <label for="login-correo" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            CORREO ELECTRÓNICO
+                        </label>
+                        <input
+                            type="email"
+                            id="login-correo"
+                            required
+                            value="victor.navarro@almacenpro.pe"
+                            class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="login-clave" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            CONTRASEÑA
+                        </label>
+                        <input
+                            type="password"
+                            id="login-clave"
+                            required
+                            value="123456"
+                            class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm"
+                        >
+                    </div>
+
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-[#0e1b38] hover:bg-[#152852] border border-blue-500/40 text-blue-200 font-bold text-xs sm:text-sm transition cursor-pointer">
+                        Ingresar con Credenciales
+                    </button>
+                </form>
+            </aside>
+        </main>
+
+        <section class="max-w-[1380px] w-full mx-auto px-4 sm:px-6 pb-14 space-y-12">
+            <div class="card-surface rounded-2xl py-6 px-4 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-[#182544] text-center shadow-xl">
+                <div class="px-4 pt-2 md:pt-0">
+                    <p id="landing-stock-total" class="text-3xl sm:text-4xl font-extrabold text-blue-400">0</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Unidades en Stock</p>
+                </div>
+                <div class="px-4 pt-4 md:pt-0">
+                    <p class="text-3xl sm:text-4xl font-extrabold text-emerald-400">5 Módulos</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Panel Avanzado</p>
+                </div>
+                <div class="px-4 pt-4 md:pt-0">
+                    <p class="text-3xl sm:text-4xl font-extrabold text-purple-400">Kardex</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Entradas y Salidas</p>
+                </div>
+                <div class="px-4 pt-4 md:pt-0">
+                    <p class="text-3xl sm:text-4xl font-extrabold text-amber-400">Yape / Card</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Boleta Automática</p>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-center text-white mb-8">
+                    ¿Por qué usar TechStock PRO?
+                </h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="card-surface rounded-2xl p-6 hover:border-blue-500/40 transition">
+                        <h3 class="text-lg font-extrabold text-blue-400 mb-2.5">Control Técnico e IPs</h3>
+                        <p class="text-sm text-slate-300/90 leading-relaxed">
+                            Registra direcciones IP asignadas, marcas, especificaciones y fotos reales de cada equipo informático o material de almacén.
+                        </p>
+                    </div>
+                    <div class="card-surface rounded-2xl p-6 hover:border-emerald-500/40 transition">
+                        <h3 class="text-lg font-extrabold text-emerald-400 mb-2.5">Etiquetado QR Automático</h3>
+                        <p class="text-sm text-slate-300/90 leading-relaxed">
+                            Genera etiquetas QR listas para pegar en laptops, CPUs, switches o anaqueles y escanear su ficha al instante.
+                        </p>
+                    </div>
+                    <div class="card-surface rounded-2xl p-6 hover:border-purple-500/40 transition">
+                        <h3 class="text-lg font-extrabold text-purple-400 mb-2.5">Reportes y Boletas</h3>
+                        <p class="text-sm text-slate-300/90 leading-relaxed">
+                            Exporta tu inventario o Kardex a Excel (CSV) en un clic y emite comprobantes de salida o venta listos para imprimir en PDF.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ==================== VISTA PANEL INTERNO CON BARRA LATERAL ==================== -->
+    <div id="view-workspace" class="hidden min-h-screen flex flex-col lg:flex-row bg-[#040711]">
+        <div class="lg:hidden flex items-center justify-between px-4 py-3 bg-[#060c1a] border-b border-[#162340] sticky top-0 z-40">
+            <div class="flex items-center gap-2.5">
+                <span class="font-extrabold text-sm text-white">AlmacénPRO <span class="text-blue-400">v6.0</span></span>
+                <span id="mobile-perfil-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600/20 text-blue-300 border border-blue-500/30">Admin</span>
+            </div>
+            <button type="button" onclick="toggleSidebarMovil()" class="px-3 py-1.5 rounded-lg bg-[#0d1830] border border-[#20325c] text-xs font-semibold text-slate-200 cursor-pointer">
+                Menú
+            </button>
+        </div>
+
+        <div id="sidebar-backdrop" onclick="cerrarSidebarMovil()" class="fixed inset-0 bg-black/60 hidden z-40 lg:hidden"></div>
+
+        <aside id="sidebar-panel" class="hidden lg:flex lg:flex-col lg:w-72 shrink-0 bg-[#060c1a] border-r border-[#15223d] justify-between min-h-screen lg:sticky lg:top-0 fixed inset-y-0 left-0 z-50 w-72">
+            <div class="p-5">
+                <div class="flex items-center justify-between pb-5 mb-5 border-b border-[#15223d]">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="mostrarPantalla('landing')">
+                        <div class="w-9 h-9 rounded-lg bg-[#0e1d3d] border border-blue-500/40 flex items-center justify-center text-blue-400 font-extrabold text-sm">
+                            AP
+                        </div>
+                        <div>
+                            <p class="font-extrabold text-sm text-white leading-none">AlmacénPRO <span class="text-blue-400">v6.0</span></p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider mt-1">Stock &amp; Salidas (S/)</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="mostrarPantalla('landing')" title="Volver al inicio" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-[#0c162b] border border-[#1d2e52] cursor-pointer">
+                        Inicio
+                    </button>
+                </div>
+
+                <p class="text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase px-3 mb-2.5">
+                    MENÚ PRINCIPAL
+                </p>
+
+                <nav class="space-y-1.5 text-sm">
+                    <button type="button" onclick="cambiarModulo('dashboard')" id="menu-dashboard" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#102247] text-white border-l-4 border-blue-400 font-semibold text-left transition cursor-pointer">
+                        <span>📊</span>
+                        <span>Resumen de Stock</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('catalogo')" id="menu-catalogo" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span>📦</span>
+                        <span>Catálogo de Materiales</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('movimientos')" id="menu-movimientos" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span>🔄</span>
+                        <span>Ingresos y Salidas</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('kardex')" id="menu-kardex" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span>📋</span>
+                        <span>Kardex Valorizado (S/)</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('despacho')" id="menu-despacho" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span>🧾</span>
+                        <span>Guía / Boleta Despacho (<span id="badge-despacho">0</span>)</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('alertas')" id="menu-alertas" class="side-link w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span class="flex items-center gap-3">
+                            <span>⚠️</span>
+                            <span>Stock Crítico</span>
+                        </span>
+                        <span id="badge-critico" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">0</span>
+                    </button>
+
+                    <button type="button" onclick="cambiarModulo('guia')" id="menu-guia" class="side-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer">
+                        <span>📖</span>
+                        <span>Guía de uso</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="p-5 border-t border-[#15223d] bg-[#050914]">
+                <p class="text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase mb-2.5">
+                    CUENTA ACTIVA
+                </p>
+
+                <div class="mb-3 px-3 py-2 rounded-xl bg-[#0a1224] border border-[#192847] text-xs">
+                    <p id="active-user-name" class="font-bold text-white truncate">Victor Navarro</p>
+                    <p id="active-user-meta" class="text-[11px] text-blue-300 truncate">Admin • Acceso Libre</p>
+                </div>
+
+                <button type="button" onclick="cerrarSesion()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#0c1528] hover:bg-rose-950/50 border border-[#1d2e52] hover:border-rose-500/40 text-slate-200 hover:text-rose-200 font-semibold text-sm transition cursor-pointer">
+                    <span>↩</span>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-5 sm:p-8 max-w-[1280px] w-full mx-auto">
+            <div class="flex flex-wrap items-center justify-between gap-4 pb-5 mb-6 border-b border-[#15223d]">
+                <div>
+                    <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">AlmacénPRO v6.0 • Guardado Automático (S/)</span>
+                    <h1 id="modulo-titulo" class="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">Resumen de Stock</h1>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button type="button" onclick="abrirModal('modal-material')" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold transition cursor-pointer">
+                        + Nuevo Material
+                    </button>
+                    <button type="button" onclick="exportarKardexCSV()" class="px-4 py-2 rounded-xl bg-[#0d1830] hover:bg-[#142447] border border-[#223561] text-slate-200 text-xs sm:text-sm font-semibold transition cursor-pointer">
+                        Exportar Kardex CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- MODULO 1: RESUMEN DE STOCK -->
+            <section id="sec-dashboard" class="modulo-sec space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="card-surface rounded-2xl p-5">
+                        <p class="text-xs font-bold uppercase text-slate-400">Existencias Totales</p>
+                        <p id="kpi-unidades" class="text-3xl font-extrabold text-white mt-1.5">0</p>
+                        <p class="text-xs text-slate-400 mt-1">Unidades físicas en almacén</p>
+                    </div>
+                    <div class="card-surface rounded-2xl p-5">
+                        <p class="text-xs font-bold uppercase text-slate-400">Valorización en Soles</p>
+                        <p id="kpi-valor" class="text-3xl font-extrabold text-blue-400 mt-1.5">S/ 0.00</p>
+                        <p class="text-xs text-slate-400 mt-1">Costo total de stock actual</p>
+                    </div>
+                    <div class="card-surface rounded-2xl p-5">
+                        <p class="text-xs font-bold uppercase text-slate-400">Stock Crítico</p>
+                        <p id="kpi-critico" class="text-3xl font-extrabold text-rose-400 mt-1.5">0</p>
+                        <p class="text-xs text-slate-400 mt-1">Materiales igual o bajo mínimo</p>
+                    </div>
+                    <div class="card-surface rounded-2xl p-5">
+                        <p class="text-xs font-bold uppercase text-slate-400">Despachos Emitidos</p>
+                        <p id="kpi-despachos" class="text-3xl font-extrabold text-emerald-400 mt-1.5">0</p>
+                        <p class="text-xs text-slate-400 mt-1">Guías / boletas registradas</p>
+                    </div>
+                </div>
+
+                <div class="card-surface rounded-2xl p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="text-lg font-bold text-white">Últimos Movimientos de Almacén</h2>
+                        <button type="button" onclick="cambiarModulo('kardex')" class="text-xs font-semibold text-blue-400 hover:underline cursor-pointer">
+                            Ver Kardex completo →
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs sm:text-sm">
+                            <thead class="bg-[#070d1d] text-slate-400 uppercase text-[11px]">
+                                <tr>
+                                    <th class="p-3 rounded-tl-lg">Fecha</th>
+                                    <th class="p-3">Tipo</th>
+                                    <th class="p-3">Material</th>
+                                    <th class="p-3">Cant.</th>
+                                    <th class="p-3">Importe (S/)</th>
+                                    <th class="p-3 rounded-tr-lg">Referencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-ultimos-mov" class="divide-y divide-[#15223d]"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODULO 2: CATÁLOGO DE MATERIALES -->
+            <section id="sec-catalogo" class="modulo-sec hidden space-y-6">
+                <div class="card-surface rounded-2xl p-4 flex flex-wrap items-center gap-3">
+                    <input
+                        type="text"
+                        id="buscar-material"
+                        oninput="renderCatalogo()"
+                        placeholder="Buscar por código, material, lote o anaquel..."
+                        class="flex-1 min-w-[220px] px-3.5 py-2.5 rounded-xl input-dark text-sm"
+                    >
+                    <select id="filtro-area" onchange="renderCatalogo()" class="px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                        <option value="TODAS">Todas las áreas / lotes</option>
+                        <option value="Anaquel A - Estructura">Anaquel A - Estructura</option>
+                        <option value="Anaquel B - Eléctrico">Anaquel B - Eléctrico</option>
+                        <option value="Anaquel C - EPP y Herramientas">Anaquel C - EPP y Herramientas</option>
+                    </select>
+                </div>
+
+                <div id="grid-materiales" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+            </section>
+
+            <!-- MODULO 3: INGRESOS, SALIDAS + 3 CASOS AVANZADOS DE INVENTARIO -->
+            <section id="sec-movimientos" class="modulo-sec hidden space-y-6">
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <div class="card-surface rounded-2xl p-6">
+                        <h2 class="text-lg font-bold text-emerald-400 mb-1">1. Ingreso de Proveedor (Entrada)</h2>
+                        <p class="text-xs text-slate-400 mb-4">Suma existencias al inventario y registra el ingreso en Kardex.</p>
+                        <form onsubmit="registrarEntrada(event)" class="space-y-3.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Material</label>
+                                <select id="entrada-material" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Cantidad</label>
+                                    <input type="number" id="entrada-cant" min="1" value="10" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Guía / Factura</label>
+                                    <input type="text" id="entrada-guia" placeholder="F001-0892" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Proveedor / Lote</label>
+                                <input type="text" id="entrada-prov" placeholder="Distribuidora Central S.A.C." required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                            </div>
+                            <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition cursor-pointer">
+                                Registrar Ingreso al Stock
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card-surface rounded-2xl p-6">
+                        <h2 class="text-lg font-bold text-blue-400 mb-1">2. Salida a Obra o Área (Despacho)</h2>
+                        <p class="text-xs text-slate-400 mb-4">Descuenta stock físico y emite boleta imprimible en S/.</p>
+                        <form onsubmit="registrarSalidaDirecta(event)" class="space-y-3.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Material</label>
+                                <select id="salida-material" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Cantidad a Despachar</label>
+                                    <input type="number" id="salida-cant" min="1" value="1" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Área / Obra / Cliente</label>
+                                    <input type="text" id="salida-area" value="Almacén Central / Obra 01" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Responsable / Receptor</label>
+                                <input type="text" id="salida-resp" value="Victor Navarro" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                            </div>
+                            <button type="submit" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition cursor-pointer">
+                                Confirmar Salida y Emitir Boleta
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 3 CASOS AVANZADOS DE INVENTARIO -->
+                <div class="grid lg:grid-cols-3 gap-6">
+                    <div class="card-surface rounded-2xl p-6">
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">Caso Avanzado 1</span>
+                        <h3 class="text-base font-extrabold text-white mt-2 mb-1">Transferencia entre Anaqueles</h3>
+                        <p class="text-xs text-slate-400 mb-4">Reubica el material entre anaqueles/áreas y registra la transferencia en Kardex.</p>
+                        <form onsubmit="registrarTransferencia(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Material</label>
+                                <select id="transf-material" class="w-full px-3 py-2 rounded-xl input-dark text-xs sm:text-sm"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Cantidad</label>
+                                    <input type="number" id="transf-cant" min="1" value="2" required class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Anaquel Destino</label>
+                                    <select id="transf-destino" class="w-full px-3 py-2 rounded-xl input-dark text-xs">
+                                        <option value="Anaquel A - Estructura">Anaquel A - Estructura</option>
+                                        <option value="Anaquel B - Eléctrico">Anaquel B - Eléctrico</option>
+                                        <option value="Anaquel C - EPP y Herramientas">Anaquel C - EPP y Herramientas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm transition cursor-pointer">
+                                Transferir Ubicación
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card-surface rounded-2xl p-6">
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Caso Avanzado 2</span>
+                        <h3 class="text-base font-extrabold text-white mt-2 mb-1">Ajuste / Toma Física</h3>
+                        <p class="text-xs text-slate-400 mb-4">Corrige el stock según conteo físico real (merma, sobrante o auditoría).</p>
+                        <form onsubmit="registrarAjusteFisico(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Material</label>
+                                <select id="ajuste-material" onchange="sincronizarStockReal()" class="w-full px-3 py-2 rounded-xl input-dark text-xs sm:text-sm"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Conteo Real</label>
+                                    <input type="number" id="ajuste-real" min="0" required class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Motivo</label>
+                                    <select id="ajuste-motivo" class="w-full px-3 py-2 rounded-xl input-dark text-xs">
+                                        <option value="Toma Física / Auditoría">Toma Física / Auditoría</option>
+                                        <option value="Merma / Deterioro">Merma / Deterioro</option>
+                                        <option value="Sobrante de Lote">Sobrante de Lote</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm transition cursor-pointer">
+                                Aplicar Ajuste al Stock
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card-surface rounded-2xl p-6">
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Caso Avanzado 3</span>
+                        <h3 class="text-base font-extrabold text-white mt-2 mb-1">Reposición a Stock Mínimo</h3>
+                        <p class="text-xs text-slate-400 mb-4">Reabastece automáticamente todos los ítems críticos o bajo mínimo con margen.</p>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Margen Extra sobre Mínimo</label>
+                                <input type="number" id="reposicion-margen" oninput="actualizarResumenReposicion()" min="1" value="5" class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                            </div>
+                            <p id="reposicion-resumen" class="text-xs text-slate-300 bg-[#070d1d] p-2.5 rounded-xl border border-[#182544]">
+                                Calcula y reabastece materiales críticos en un clic.
+                            </p>
+                            <button type="button" onclick="reabastecerTodosCriticos()" class="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs sm:text-sm transition cursor-pointer">
+                                Reabastecer Ítems Críticos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODULO 4: KARDEX VALORIZADO -->
+            <section id="sec-kardex" class="modulo-sec hidden card-surface rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-white mb-4">Kardex de Movimientos en Soles (S/)</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="bg-[#070d1d] text-slate-400 uppercase text-[11px]">
+                            <tr>
+                                <th class="p-3 rounded-tl-lg">Fecha y Hora</th>
+                                <th class="p-3">Movimiento</th>
+                                <th class="p-3">Código / Material</th>
+                                <th class="p-3">Cantidad</th>
+                                <th class="p-3">Costo Unit.</th>
+                                <th class="p-3">Subtotal (S/)</th>
+                                <th class="p-3">Detalle</th>
+                                <th class="p-3 rounded-tr-lg">Perfil</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-kardex" class="divide-y divide-[#15223d]"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- MODULO 5: GUÍA / BOLETA DE DESPACHO + FINALIZAR COMPRA (POS) -->
+            <section id="sec-despacho" class="modulo-sec hidden grid lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-7 card-surface rounded-2xl p-6 space-y-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="text-lg font-bold text-white">Lista de Materiales Seleccionados</h2>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="agregarRapidoPrimero()" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#0d1830] hover:bg-[#15264a] text-emerald-300 border border-emerald-500/30 cursor-pointer">
+                                + Agregar ítem rápido
+                            </button>
+                            <button type="button" onclick="cambiarModulo('catalogo')" class="text-xs font-semibold text-blue-400 hover:underline cursor-pointer">
+                                Ver Catálogo →
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lista-despacho" class="divide-y divide-[#15223d] text-sm"></div>
+
+                    <div class="pt-4 border-t border-[#15223d]">
+                        <h3 class="text-sm font-bold text-white mb-3">Historial de Guías / Boletas Emitidas</h3>
+                        <div id="historial-boletas" class="space-y-2 text-xs"></div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta Finalizar Compra (POS) -->
+                <div class="lg:col-span-5 card-surface rounded-2xl p-6 space-y-4">
+                    <h2 class="text-xl font-extrabold text-white">Finalizar Compra (POS)</h2>
+
+                    <div>
+                        <label for="pos-cliente" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            NOMBRE / RAZÓN SOCIAL CLIENTE
+                        </label>
+                        <input
+                            type="text"
+                            id="pos-cliente"
+                            placeholder="Ej. Victor Navarro"
+                            class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm"
+                        >
+                    </div>
+
+                    <div class="space-y-2 pt-1 text-sm">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Subtotal:</span>
+                            <span id="pos-subtotal" class="font-mono font-semibold text-white">S/ 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 pb-3 border-b border-[#182544]">
+                            <span>IGV (18% incluido):</span>
+                            <span class="font-semibold text-slate-200">Incluido</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1">
+                            <span class="text-lg font-extrabold text-white">Total a Pagar:</span>
+                            <span id="pos-total" class="text-2xl font-extrabold font-mono text-blue-400">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                            MÉTODO DE PAGO
+                        </label>
+                        <div class="grid grid-cols-2 gap-2.5 text-xs sm:text-sm font-bold">
+                            <label class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#070d1d] border border-[#1e2d52] hover:border-blue-500/50 cursor-pointer">
+                                <input type="radio" name="pos_metodo_pago" value="Yape" checked class="accent-blue-500 w-4 h-4">
+                                <span class="text-purple-300">Yape</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#070d1d] border border-[#1e2d52] hover:border-blue-500/50 cursor-pointer">
+                                <input type="radio" name="pos_metodo_pago" value="Tarjeta" class="accent-blue-500 w-4 h-4">
+                                <span class="text-blue-300">Tarjeta</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#070d1d] border border-[#1e2d52] hover:border-blue-500/50 cursor-pointer">
+                                <input type="radio" name="pos_metodo_pago" value="Efectivo" class="accent-blue-500 w-4 h-4">
+                                <span class="text-emerald-300">Efectivo</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#070d1d] border border-[#1e2d52] hover:border-blue-500/50 cursor-pointer">
+                                <input type="radio" name="pos_metodo_pago" value="Transferencia" class="accent-blue-500 w-4 h-4">
+                                <span class="text-amber-300">Transferencia</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="confirmarCompraPOS()" class="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 transition cursor-pointer">
+                        Confirmar Compra y Generar Boleta
+                    </button>
+                </div>
+            </section>
+
+            <!-- MODULO 6: STOCK CRÍTICO -->
+            <section id="sec-alertas" class="modulo-sec hidden card-surface rounded-2xl p-6 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-lg font-bold text-rose-400">Alertas de Stock Crítico / Reposición</h2>
+                    <button type="button" onclick="reabastecerTodosCriticos()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">
+                        Reabastecer Todos (+5 sobre mínimo)
+                    </button>
+                </div>
+                <div id="lista-criticos" class="space-y-3"></div>
+            </section>
+
+            <!-- MODULO 7: GUÍA DE USO -->
+            <section id="sec-guia" class="modulo-sec hidden card-surface rounded-2xl p-6 space-y-4 text-sm text-slate-300">
+                <h2 class="text-lg font-bold text-white">Guía Rápida de Uso — AlmacénPRO v6.0</h2>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li><strong class="text-white">Acceso Multi-Perfil:</strong> Selecciona <em>Admin</em>, <em>Mentor</em> o <em>Estudiante</em>, usa <em>Acceso Libre Inmediato</em> o entra con tus credenciales.</li>
+                    <li><strong class="text-white">Casos Avanzados de Inventario:</strong> En <em>Ingresos y Salidas</em> puedes hacer <em>Transferencia entre Anaqueles</em>, <em>Ajuste / Toma Física</em> o <em>Reposición a Stock Mínimo</em>.</li>
+                    <li><strong class="text-white">Finalizar Compra (POS) y Boleta:</strong> En <em>Guía / Boleta Despacho</em> ingresa el cliente, elige método de pago (Yape, Tarjeta, Efectivo o Transferencia) y genera la boleta imprimible.</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODAL CREAR CUENTA ==================== -->
+    <div id="modal-cuenta" onclick="cerrarPorFondo(event, 'modal-cuenta')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
+        <div class="card-surface rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-extrabold text-white">Crear mi Cuenta en AlmacénPRO</h3>
+                <button type="button" onclick="cerrarModal('modal-cuenta')" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+            <form onsubmit="crearCuentaRapida(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo</label>
+                    <input type="text" id="reg-nombre" value="Victor Navarro" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Correo Electrónico</label>
+                    <input type="email" id="reg-correo" value="victor.navarro@almacenpro.pe" required class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Perfil Inicial</label>
+                    <select id="reg-perfil" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                        <option value="Admin">Admin</option>
+                        <option value="Mentor">Mentor</option>
+                        <option value="Estudiante">Estudiante</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold cursor-pointer">
+                    Crear y Entrar al Sistema
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL QR MATERIAL ==================== -->
+    <div id="modal-qr" onclick="cerrarPorFondo(event, 'modal-qr')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
+        <div class="card-surface rounded-2xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase text-blue-400">Etiqueta QR de Material</span>
+                <button type="button" onclick="cerrarModal('modal-qr')" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+            <div>
+                <h3 id="qr-nombre" class="text-lg font-extrabold text-white"></h3>
+                <p id="qr-codigo" class="text-xs font-mono text-slate-400 mt-0.5"></p>
+            </div>
+            <div id="qr-box" class="flex justify-center p-4 rounded-xl bg-white"></div>
+            <div class="text-xs text-slate-300 bg-[#070d1d] p-3 rounded-xl border border-[#192847] flex justify-between">
+                <span>Stock: <strong id="qr-stock" class="text-emerald-400"></strong></span>
+                <span>Costo: <strong id="qr-precio" class="text-blue-400"></strong></span>
+            </div>
+            <button type="button" onclick="cerrarModal('modal-qr')" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer">
+                Cerrar Etiqueta
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL NUEVO MATERIAL ==================== -->
+    <div id="modal-material" onclick="cerrarPorFondo(event, 'modal-material')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
+        <div class="card-surface rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-extrabold text-white">Registrar Material de Almacén</h3>
+                <button type="button" onclick="cerrarModal('modal-material')" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+            <form onsubmit="guardarMaterial(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre del Material</label>
+                    <input type="text" id="mat-nombre" required placeholder="Ej. Cable THW 12 AWG Rollo" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Código / Lote</label>
+                        <input type="text" id="mat-codigo" required placeholder="MAT-006" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Anaquel / Área</label>
+                        <select id="mat-area" class="w-full px-3.5 py-2.5 rounded-xl input-dark text-sm">
+                            <option value="Anaquel A - Estructura">Anaquel A - Estructura</option>
+                            <option value="Anaquel B - Eléctrico">Anaquel B - Eléctrico</option>
+                            <option value="Anaquel C - EPP y Herramientas">Anaquel C - EPP y Herramientas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Precio (S/)</label>
+                        <input type="number" step="0.01" id="mat-precio" required placeholder="120.00" class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Stock</label>
+                        <input type="number" id="mat-stock" required placeholder="15" class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Mínimo</label>
+                        <input type="number" id="mat-min" required placeholder="4" class="w-full px-3 py-2 rounded-xl input-dark text-sm">
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold cursor-pointer">
+                    Guardar en Inventario
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL BOLETA / GUÍA IMPRIMIBLE ==================== -->
+    <div id="modal-boleta" onclick="cerrarPorFondo(event, 'modal-boleta')" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white text-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="text-center border-b border-slate-200 pb-3 mb-3">
+                <p class="font-extrabold text-lg">ALMACÉNPRO v6.0</p>
+                <p class="text-xs text-slate-500">Boleta / Guía de Salida de Almacén • Moneda: Soles (S/)</p>
+                <p id="bol-numero" class="text-xs font-mono font-bold mt-1 bg-slate-100 inline-block px-2.5 py-0.5 rounded"></p>
+            </div>
+            <div class="text-xs space-y-1 mb-3 text-slate-700">
+                <p><strong>Cliente / Destino:</strong> <span id="bol-destino"></span></p>
+                <p><strong>Método de Pago:</strong> <span id="bol-metodo"></span></p>
+                <p><strong>Fecha:</strong> <span id="bol-fecha"></span></p>
+                <p><strong>Registrado por:</strong> <span id="bol-usuario"></span></p>
+            </div>
+            <div id="bol-items" class="border-t border-b border-slate-200 py-3 my-3 text-xs space-y-1.5"></div>
+            <div class="flex justify-between font-extrabold text-base mb-5">
+                <span>TOTAL A PAGAR (S/):</span>
+                <span id="bol-total">S/ 0.00</span>
+            </div>
+            <div class="flex gap-2 no-print">
+                <button type="button" onclick="window.print()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer">
+                    Imprimir / Guardar PDF
+                </button>
+                <button type="button" onclick="cerrarModal('modal-boleta')" class="px-4 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs cursor-pointer">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const materialesBase = [
+            { id: 1, codigo: "ALM-001", nombre: "Cemento Portland Tipo I (Bolsa 42.5kg)", area: "Anaquel A - Estructura", precio: 28.50, stock: 24, minimo: 8, foto: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80" },
+            { id: 2, codigo: "ALM-002", nombre: "Acero Corrugado 1/2\" x 9m", area: "Anaquel A - Estructura", precio: 42.00, stock: 3, minimo: 6, foto: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80" },
+            { id: 3, codigo: "ALM-003", nombre: "Interruptor Termomagnético Bipolar 32A", area: "Anaquel B - Eléctrico", precio: 54.00, stock: 12, minimo: 5, foto: "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?w=600&q=80" },
+            { id: 4, codigo: "ALM-004", nombre: "Casco de Seguridad Dieléctrico Blanco", area: "Anaquel C - EPP y Herramientas", precio: 36.00, stock: 2, minimo: 5, foto: "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?w=600&q=80" },
+            { id: 5, codigo: "ALM-005", nombre: "Cinta Aislante Vinílica 3M 18mm", area: "Anaquel B - Eléctrico", precio: 9.50, stock: 30, minimo: 10, foto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&q=80" }
+        ];
+
+        let materiales = JSON.parse(localStorage.getItem('ap6_materiales')) || materialesBase;
+        let kardex = JSON.parse(localStorage.getItem('ap6_kardex')) || [
+            { fecha: new Date().toLocaleString(), tipo: "INGRESO", codigo: "ALM-001", nombre: "Cemento Portland Tipo I (Bolsa 42.5kg)", cant: "+24", unit: 28.50, total: 684.00, detalle: "Carga inicial Almacén Central", usuario: "Admin" }
+        ];
+        let despachos = JSON.parse(localStorage.getItem('ap6_despachos')) || [];
+        let carritoDespacho = [];
+        let perfilElegido = "Admin";
+        let moduloActual = "dashboard";
+        let sesion = JSON.parse(localStorage.getItem('ap6_sesion')) || {
+            nombre: "Victor Navarro",
+            correo: "victor.navarro@almacenpro.pe",
+            perfil: "Admin",
+            modo: "Acceso Libre"
+        };
+
+        function notificar(mensaje, tipo = "info") {
+            const box = document.getElementById('toast-box');
+            if (!box) return;
+            const el = document.createElement('div');
+            const estilos = {
+                ok: "bg-emerald-950/95 border-emerald-400/50 text-emerald-200",
+                warn: "bg-amber-950/95 border-amber-400/50 text-amber-200",
+                info: "bg-[#0b1836]/95 border-blue-400/50 text-blue-200"
+            };
+            el.className = `px-4 py-2.5 rounded-xl border text-xs font-bold shadow-xl backdrop-blur ${estilos[tipo] || estilos.info}`;
+            el.textContent = mensaje;
+            box.appendChild(el);
+            setTimeout(() => el.remove(), 2600);
+        }
+
+        function persistir() {
+            try {
+                localStorage.setItem('ap6_materiales', JSON.stringify(materiales));
+                localStorage.setItem('ap6_kardex', JSON.stringify(kardex));
+                localStorage.setItem('ap6_despachos', JSON.stringify(despachos));
+                localStorage.setItem('ap6_sesion', JSON.stringify(sesion));
+            } catch (e) {}
+            renderTodo();
+        }
+
+        function seleccionarPerfil(perfil) {
+            perfilElegido = perfil;
+            sesion.perfil = perfil;
+            document.querySelectorAll('.perfil-pill').forEach(btn => {
+                btn.className = "perfil-pill py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border border-[#1e2d52] bg-[#070d1d] text-slate-300 hover:border-slate-500 transition cursor-pointer";
+            });
+            const activa = document.getElementById('pill-' + perfil);
+            if (activa) {
+                activa.className = "perfil-pill py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold border-2 border-blue-500 bg-[#102247] text-white transition cursor-pointer";
+            }
+            const selReg = document.getElementById('reg-perfil');
+            if (selReg) selReg.value = perfil;
+            try { localStorage.setItem('ap6_sesion', JSON.stringify(sesion)); } catch (e) {}
+        }
+
+        function enfocarCredenciales() {
+            const input = document.getElementById('login-correo');
+            if (input) {
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                input.focus();
+            }
+        }
+
+        function crearCuentaRapida(e) {
+            e.preventDefault();
+            const nombre = (document.getElementById('reg-nombre').value || "Victor Navarro").trim();
+            const correo = (document.getElementById('reg-correo').value || "victor.navarro@almacenpro.pe").trim();
+            const perfil = document.getElementById('reg-perfil').value || perfilElegido;
+            perfilElegido = perfil;
+            seleccionarPerfil(perfil);
+            sesion = { nombre, correo, perfil, modo: "Cuenta Activa" };
+            cerrarModal('modal-cuenta');
+            persistir();
+            mostrarPantalla('workspace');
+            cambiarModulo('dashboard');
+            notificar(`Sesión iniciada como ${nombre} (${perfil})`, "ok");
+        }
+
+        function accesoLibreInmediato() {
+            const correoActual = (document.getElementById('login-correo').value || "victor.navarro@almacenpro.pe").trim();
+            const nombreInferido = correoActual.toLowerCase().includes("victor") ? "Victor Navarro" : (correoActual.split("@")[0] || "Victor Navarro");
+            sesion = {
+                nombre: nombreInferido,
+                correo: correoActual,
+                perfil: perfilElegido,
+                modo: "Acceso Libre Inmediato"
+            };
+            persistir();
+            mostrarPantalla('workspace');
+            cambiarModulo('dashboard');
+            notificar(`Acceso directo activado (${perfilElegido})`, "ok");
+        }
+
+        function loginConCredenciales(e) {
+            e.preventDefault();
+            const correo = document.getElementById('login-correo').value.trim();
+            const nombreInferido = correo.toLowerCase().includes("victor") ? "Victor Navarro" : (correo.split("@")[0] || "Victor Navarro");
+            sesion = {
+                nombre: nombreInferido,
+                correo,
+                perfil: perfilElegido,
+                modo: "Credenciales"
+            };
+            persistir();
+            mostrarPantalla('workspace');
+            cambiarModulo('dashboard');
+            notificar(`Bienvenido, ${nombreInferido}`, "ok");
+        }
+
+        function cerrarSesion() {
+            cerrarSidebarMovil();
+            mostrarPantalla('landing');
+        }
+
+        function irModuloDirecto(modulo) {
+            mostrarPantalla('workspace');
+            cambiarModulo(modulo);
+        }
+
+        function mostrarPantalla(nombre) {
+            document.getElementById('view-landing').classList.toggle('hidden', nombre !== 'landing');
+            document.getElementById('view-workspace').classList.toggle('hidden', nombre !== 'workspace');
+            if (nombre === 'workspace') {
+                cambiarModulo(moduloActual);
+            }
+            renderTodo();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleSidebarMovil() {
+            const sidebar = document.getElementById('sidebar-panel');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const isHidden = sidebar.classList.contains('hidden');
+            sidebar.classList.toggle('hidden', !isHidden);
+            backdrop.classList.toggle('hidden', !isHidden);
+        }
+
+        function cerrarSidebarMovil() {
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar-panel').classList.add('hidden');
+                document.getElementById('sidebar-backdrop').classList.add('hidden');
+            }
+        }
+
+        const titulosModulo = {
+            dashboard: "Resumen de Stock",
+            catalogo: "Catálogo de Materiales",
+            movimientos: "Ingresos y Salidas",
+            kardex: "Kardex Valorizado (S/)",
+            despacho: "Guía / Boleta Despacho",
+            alertas: "Stock Crítico",
+            guia: "Guía de uso"
+        };
+
+        function cambiarModulo(modulo) {
+            moduloActual = titulosModulo[modulo] ? modulo : "dashboard";
+            document.getElementById('modulo-titulo').textContent = titulosModulo[moduloActual];
+
+            document.querySelectorAll('.modulo-sec').forEach(sec => sec.classList.add('hidden'));
+            const secActiva = document.getElementById('sec-' + moduloActual);
+            if (secActiva) secActiva.classList.remove('hidden');
+
+            document.querySelectorAll('.side-link').forEach(link => {
+                const esAlertas = link.id === 'menu-alertas';
+                link.className = "side-link w-full flex items-center px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-[#0b1529] font-medium text-left transition cursor-pointer " + (esAlertas ? "justify-between" : "gap-3");
+            });
+
+            const activo = document.getElementById('menu-' + moduloActual);
+            if (activo) {
+                const esAlertas = moduloActual === 'alertas';
+                activo.className = "side-link w-full flex items-center px-3.5 py-2.5 rounded-xl bg-[#102247] text-white border-l-4 border-blue-400 font-semibold text-left transition cursor-pointer " + (esAlertas ? "justify-between" : "gap-3");
+            }
+
+            cerrarSidebarMovil();
+        }
+
+        function renderTodo() {
+            document.getElementById('active-user-name').textContent = sesion.nombre;
+            document.getElementById('active-user-meta').textContent = `${sesion.perfil} • ${sesion.modo}`;
+            document.getElementById('mobile-perfil-badge').textContent = sesion.perfil;
+
+            const totalUnidades = materiales.reduce((s, m) => s + Number(m.stock), 0);
+            const valorTotal = materiales.reduce((s, m) => s + (Number(m.stock) * Number(m.precio)), 0);
+            const criticos = materiales.filter(m => Number(m.stock) <= Number(m.minimo));
+
+            const landingStock = document.getElementById('landing-stock-total');
+            if (landingStock) landingStock.textContent = totalUnidades;
+
+            document.getElementById('kpi-unidades').textContent = totalUnidades;
+            document.getElementById('kpi-valor').textContent = `S/ ${valorTotal.toFixed(2)}`;
+            document.getElementById('kpi-critico').textContent = criticos.length;
+            document.getElementById('kpi-despachos').textContent = despachos.length;
+            document.getElementById('badge-critico').textContent = criticos.length;
+            document.getElementById('badge-despacho').textContent = carritoDespacho.reduce((s, i) => s + i.cant, 0);
+
+            renderCatalogo();
+            poblarSelects();
+            sincronizarStockReal();
+            actualizarResumenReposicion(criticos);
+            renderKardex();
+            renderDespacho();
+            renderCriticos(criticos);
+        }
+
+        function renderCatalogo() {
+            const q = (document.getElementById('buscar-material')?.value || "").toLowerCase();
+            const area = document.getElementById('filtro-area')?.value || "TODAS";
+            const grid = document.getElementById('grid-materiales');
+            if (!grid) return;
+
+            const filtrados = materiales.filter(m => {
+                const matchTexto = m.nombre.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || m.area.toLowerCase().includes(q);
+                const matchArea = area === "TODAS" || m.area === area;
+                return matchTexto && matchArea;
+            });
+
+            grid.innerHTML = filtrados.map(m => {
+                const esCritico = Number(m.stock) <= Number(m.minimo);
+                return `
+                <article class="card-surface rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="relative h-40 bg-[#070d1d]">
+                            <img src="${m.foto || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&q=80'}" alt="${m.nombre}" class="w-full h-full object-cover opacity-80">
+                            <span class="absolute top-2.5 left-2.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded bg-[#050914]/90 text-blue-300 border border-blue-500/30">${m.codigo}</span>
+                            <span class="absolute top-2.5 right-2.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${esCritico ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
+                                Stock: ${m.stock}
+                            </span>
+                        </div>
+                        <div class="p-4">
+                            <p class="text-[11px] font-semibold text-slate-400">${m.area}</p>
+                            <h3 class="font-bold text-white text-base mt-1">${m.nombre}</h3>
+                            <p class="text-xl font-extrabold text-blue-400 mt-2">S/ ${Number(m.precio).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="px-4 pb-4 pt-2 border-t border-[#15223d] flex gap-2">
+                        <button type="button" onclick="abrirQR(${m.id})" class="flex-1 py-2 px-3 rounded-xl bg-[#0d1830] hover:bg-[#15264a] border border-[#223561] text-xs font-bold text-slate-200 cursor-pointer">
+                            QR Lote
+                        </button>
+                        <button type="button" onclick="agregarADespacho(${m.id})" ${Number(m.stock) <= 0 ? 'disabled' : ''} class="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-xs font-bold text-white cursor-pointer">
+                            + Despacho
+                        </button>
+                    </div>
+                </article>`;
+            }).join('') || `<p class="text-slate-400 text-sm col-span-full py-8 text-center">No hay materiales que coincidan con el filtro.</p>`;
+        }
+
+        function poblarSelects() {
+            const opts = materiales.map(m => `<option value="${m.id}">${m.codigo} — ${m.nombre} (Stock: ${m.stock} | ${m.area})</option>`).join('');
+            ['entrada-material', 'salida-material', 'transf-material', 'ajuste-material'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const prev = el.value;
+                    el.innerHTML = opts;
+                    if (prev && materiales.some(m => String(m.id) === String(prev))) {
+                        el.value = prev;
+                    }
+                }
+            });
+        }
+
+        function sincronizarStockReal() {
+            const sel = document.getElementById('ajuste-material');
+            const inp = document.getElementById('ajuste-real');
+            if (!sel || !inp) return;
+            const mat = materiales.find(m => m.id === Number(sel.value));
+            if (mat) inp.value = Number(mat.stock);
+        }
+
+        function actualizarResumenReposicion(listaCriticos) {
+            const criticos = Array.isArray(listaCriticos) ? listaCriticos : materiales.filter(m => Number(m.stock) <= Number(m.minimo));
+            const el = document.getElementById('reposicion-resumen');
+            const margen = Math.max(1, parseInt(document.getElementById('reposicion-margen')?.value || "5", 10));
+            if (!el) return;
+            if (criticos.length === 0) {
+                el.textContent = "Sin ítems críticos por reabastecer.";
+                return;
+            }
+            const undTotal = criticos.reduce((sum, m) => sum + Math.max(1, (Number(m.minimo) + margen) - Number(m.stock)), 0);
+            el.textContent = `${criticos.length} ítem(s) crítico(s) • Se sumarían +${undTotal} und. en total.`;
+        }
+
+        function registrarEntrada(e) {
+            e.preventDefault();
+            const id = Number(document.getElementById('entrada-material').value);
+            const cant = parseInt(document.getElementById('entrada-cant').value, 10);
+            const guia = document.getElementById('entrada-guia').value.trim();
+            const prov = document.getElementById('entrada-prov').value.trim();
+            const mat = materiales.find(m => m.id === id);
+            if (!mat || cant <= 0) return;
+
+            mat.stock = Number(mat.stock) + cant;
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: "INGRESO",
+                codigo: mat.codigo,
+                nombre: mat.nombre,
+                cant: `+${cant}`,
+                unit: Number(mat.precio),
+                total: cant * Number(mat.precio),
+                detalle: `Guía ${guia} • ${prov}`,
+                usuario: sesion.perfil
+            });
+
+            document.getElementById('entrada-guia').value = '';
+            document.getElementById('entrada-prov').value = '';
+            persistir();
+            notificar(`Ingreso registrado: +${cant} de ${mat.nombre}`, "ok");
+        }
+
+        function registrarSalidaDirecta(e) {
+            e.preventDefault();
+            const id = Number(document.getElementById('salida-material').value);
+            const cant = parseInt(document.getElementById('salida-cant').value, 10);
+            const area = document.getElementById('salida-area').value.trim();
+            const resp = document.getElementById('salida-resp').value.trim();
+            const mat = materiales.find(m => m.id === id);
+            if (!mat || cant <= 0) return;
+            if (cant > Number(mat.stock)) {
+                return notificar(`Stock insuficiente. Disponible: ${mat.stock}`, "warn");
+            }
+
+            mat.stock = Number(mat.stock) - cant;
+            const total = cant * Number(mat.precio);
+            const numBol = `B001-${String(despachos.length + 1).padStart(4, '0')}`;
+
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: "SALIDA",
+                codigo: mat.codigo,
+                nombre: mat.nombre,
+                cant: `-${cant}`,
+                unit: Number(mat.precio),
+                total,
+                detalle: `${numBol} • ${area} (${resp})`,
+                usuario: sesion.perfil
+            });
+
+            const doc = {
+                numero: numBol,
+                destino: `${area} — ${resp}`,
+                metodo: "Salida Directa",
+                fecha: new Date().toLocaleString(),
+                usuario: `${sesion.nombre} (${sesion.perfil})`,
+                total,
+                items: [{ codigo: mat.codigo, nombre: mat.nombre, cant, precio: Number(mat.precio) }]
+            };
+            despachos.unshift(doc);
+            persistir();
+            abrirBoleta(doc);
+        }
+
+        function registrarTransferencia(e) {
+            e.preventDefault();
+            const id = Number(document.getElementById('transf-material').value);
+            const cant = parseInt(document.getElementById('transf-cant').value, 10);
+            const destinoArea = document.getElementById('transf-destino').value;
+            const mat = materiales.find(m => m.id === id);
+            if (!mat || cant <= 0) return;
+            if (cant > Number(mat.stock)) {
+                return notificar(`Máximo disponible: ${mat.stock} und.`, "warn");
+            }
+            const origenArea = mat.area;
+            mat.area = destinoArea;
+
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: "TRANSFERENCIA",
+                codigo: mat.codigo,
+                nombre: mat.nombre,
+                cant: `${cant} und.`,
+                unit: Number(mat.precio),
+                total: cant * Number(mat.precio),
+                detalle: `${origenArea} → ${destinoArea}`,
+                usuario: sesion.perfil
+            });
+            persistir();
+            notificar(`Transferido a ${destinoArea}`, "ok");
+        }
+
+        function registrarAjusteFisico(e) {
+            e.preventDefault();
+            const id = Number(document.getElementById('ajuste-material').value);
+            const nuevoStock = Math.max(0, parseInt(document.getElementById('ajuste-real').value, 10));
+            const motivo = document.getElementById('ajuste-motivo').value;
+            const mat = materiales.find(m => m.id === id);
+            if (!mat || Number.isNaN(nuevoStock)) return;
+
+            const diff = nuevoStock - Number(mat.stock);
+            mat.stock = nuevoStock;
+
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: diff >= 0 ? "AJUSTE (+)" : "AJUSTE (-)",
+                codigo: mat.codigo,
+                nombre: mat.nombre,
+                cant: `${diff >= 0 ? '+' : ''}${diff}`,
+                unit: Number(mat.precio),
+                total: Math.abs(diff) * Number(mat.precio),
+                detalle: `${motivo} • Stock real: ${nuevoStock}`,
+                usuario: sesion.perfil
+            });
+            persistir();
+            notificar(`Ajuste aplicado (${nuevoStock} und.)`, "ok");
+        }
+
+        function reabastecerTodosCriticos() {
+            const margen = Math.max(1, parseInt(document.getElementById('reposicion-margen')?.value || "5", 10));
+            const criticos = materiales.filter(m => Number(m.stock) <= Number(m.minimo));
+            if (criticos.length === 0) {
+                return notificar("No hay materiales críticos por reabastecer", "info");
+            }
+
+            criticos.forEach(mat => {
+                const objetivo = Number(mat.minimo) + margen;
+                const agregar = Math.max(1, objetivo - Number(mat.stock));
+                mat.stock = Number(mat.stock) + agregar;
+
+                kardex.unshift({
+                    fecha: new Date().toLocaleString(),
+                    tipo: "REPOSICIÓN",
+                    codigo: mat.codigo,
+                    nombre: mat.nombre,
+                    cant: `+${agregar}`,
+                    unit: Number(mat.precio),
+                    total: agregar * Number(mat.precio),
+                    detalle: `Reposición automática (Mín. ${mat.minimo} + ${margen})`,
+                    usuario: sesion.perfil
+                });
+            });
+
+            persistir();
+            notificar(`${criticos.length} ítem(s) crítico(s) reabastecido(s)`, "ok");
+        }
+
+        function agregarADespacho(id) {
+            const mat = materiales.find(m => m.id === id);
+            if (!mat || Number(mat.stock) <= 0) {
+                return notificar("Sin stock disponible para este material", "warn");
+            }
+            const found = carritoDespacho.find(i => i.id === id);
+            if (found) {
+                if (found.cant < Number(mat.stock)) {
+                    found.cant++;
+                } else {
+                    return notificar(`Máximo en stock alcanzado (${mat.stock})`, "warn");
+                }
+            } else {
+                carritoDespacho.push({ id: mat.id, codigo: mat.codigo, nombre: mat.nombre, precio: Number(mat.precio), cant: 1 });
+            }
+            renderTodo();
+            notificar(`Agregado: ${mat.nombre}`, "ok");
+        }
+
+        function agregarRapidoPrimero() {
+            const disponible = materiales.find(m => Number(m.stock) > 0);
+            if (!disponible) return notificar("No hay stock disponible", "warn");
+            agregarADespacho(disponible.id);
+        }
+
+        function cambiarCantDespacho(idx, delta) {
+            const item = carritoDespacho[idx];
+            if (!item) return;
+            const mat = materiales.find(m => m.id === item.id);
+            const maxStock = mat ? Number(mat.stock) : item.cant;
+            const nuevaCant = item.cant + delta;
+            if (nuevaCant <= 0) {
+                carritoDespacho.splice(idx, 1);
+            } else if (nuevaCant <= maxStock) {
+                item.cant = nuevaCant;
+            } else {
+                notificar(`Stock máximo: ${maxStock} und.`, "warn");
+            }
+            renderTodo();
+        }
+
+        function renderDespacho() {
+            const cont = document.getElementById('lista-despacho');
+            const subEl = document.getElementById('pos-subtotal');
+            const totEl = document.getElementById('pos-total');
+            const histEl = document.getElementById('historial-boletas');
+
+            let suma = 0;
+            if (cont) {
+                if (carritoDespacho.length === 0) {
+                    cont.innerHTML = `<p class="text-slate-400 text-sm py-6 text-center">No hay materiales agregados. Haz clic en <strong>+ Agregar ítem rápido</strong> o ve a <button type="button" onclick="cambiarModulo('catalogo')" class="text-blue-400 underline cursor-pointer">Catálogo de Materiales</button>.</p>`;
+                } else {
+                    cont.innerHTML = carritoDespacho.map((item, idx) => {
+                        const sub = item.cant * item.precio;
+                        suma += sub;
+                        return `
+                        <div class="py-3 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="font-bold text-white">${item.nombre}</p>
+                                <p class="text-xs text-slate-400">${item.codigo} • S/ ${item.precio.toFixed(2)} c/u</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="cambiarCantDespacho(${idx}, -1)" class="w-6 h-6 rounded bg-[#0c162b] hover:bg-[#16274a] font-bold text-xs cursor-pointer">-</button>
+                                <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#0c162b]">${item.cant}</span>
+                                <button type="button" onclick="cambiarCantDespacho(${idx}, 1)" class="w-6 h-6 rounded bg-[#0c162b] hover:bg-[#16274a] font-bold text-xs cursor-pointer">+</button>
+                                <span class="font-bold text-blue-400 w-24 text-right font-mono">S/ ${sub.toFixed(2)}</span>
+                                <button type="button" onclick="carritoDespacho.splice(${idx}, 1); renderTodo();" class="text-xs text-rose-400 hover:underline ml-1 cursor-pointer">Quitar</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            }
+
+            if (subEl) subEl.textContent = `S/ ${suma.toFixed(2)}`;
+            if (totEl) totEl.textContent = `S/ ${suma.toFixed(2)}`;
+
+            if (histEl) {
+                histEl.innerHTML = despachos.length ? despachos.slice(0, 5).map((d, idx) => `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#070d1d] border border-[#162340]">
+                        <div>
+                            <span class="font-mono font-bold text-blue-300">${d.numero}</span>
+                            <span class="text-slate-300 ml-2">${d.destino}</span>
+                            <span class="text-slate-400 ml-2">(${d.metodo || 'POS'})</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono font-bold text-emerald-400">S/ ${Number(d.total).toFixed(2)}</span>
+                            <button type="button" onclick="abrirBoleta(despachos[${idx}])" class="px-2.5 py-1 rounded bg-[#0f1d3a] hover:bg-[#182d59] text-white font-semibold cursor-pointer">
+                                Boleta
+                            </button>
+                        </div>
+                    </div>
+                `).join('') : `<p class="text-slate-400">Aún no se han generado boletas.</p>`;
+            }
+        }
+
+        function confirmarCompraPOS() {
+            if (carritoDespacho.length === 0) {
+                return notificar("Agrega al menos un material antes de confirmar", "warn");
+            }
+            const clienteInput = (document.getElementById('pos-cliente')?.value || "").trim();
+            const destino = clienteInput || sesion.nombre || "Victor Navarro";
+            const metodo = document.querySelector('input[name="pos_metodo_pago"]:checked')?.value || "Yape";
+            const numBol = `B001-${String(despachos.length + 1).padStart(4, '0')}`;
+            let total = 0;
+
+            carritoDespacho.forEach(item => {
+                const mat = materiales.find(m => m.id === item.id);
+                const cantReal = mat ? Math.min(item.cant, Number(mat.stock)) : item.cant;
+                if (mat) mat.stock = Number(mat.stock) - cantReal;
+                const sub = cantReal * Number(item.precio);
+                total += sub;
+
+                kardex.unshift({
+                    fecha: new Date().toLocaleString(),
+                    tipo: "SALIDA",
+                    codigo: item.codigo,
+                    nombre: item.nombre,
+                    cant: `-${cantReal}`,
+                    unit: Number(item.precio),
+                    total: sub,
+                    detalle: `${numBol} • ${destino} (${metodo})`,
+                    usuario: sesion.perfil
+                });
+            });
+
+            const doc = {
+                numero: numBol,
+                destino,
+                metodo,
+                fecha: new Date().toLocaleString(),
+                usuario: `${sesion.nombre} (${sesion.perfil})`,
+                total,
+                items: [...carritoDespacho]
+            };
+
+            despachos.unshift(doc);
+            carritoDespacho = [];
+            const campoCliente = document.getElementById('pos-cliente');
+            if (campoCliente) campoCliente.value = '';
+            persistir();
+            abrirBoleta(doc);
+        }
+
+        function abrirBoleta(doc) {
+            document.getElementById('bol-numero').textContent = `BOLETA #${doc.numero}`;
+            document.getElementById('bol-destino').textContent = doc.destino;
+            document.getElementById('bol-metodo').textContent = doc.metodo || "Yape";
+            document.getElementById('bol-fecha').textContent = doc.fecha;
+            document.getElementById('bol-usuario').textContent = doc.usuario;
+            document.getElementById('bol-items').innerHTML = doc.items.map(i => `
+                <div class="flex justify-between">
+                    <span>${i.cant} x ${i.nombre}</span>
+                    <span class="font-bold">S/ ${(Number(i.cant) * Number(i.precio)).toFixed(2)}</span>
+                </div>
+            `).join('');
+            document.getElementById('bol-total').textContent = `S/ ${Number(doc.total).toFixed(2)}`;
+            abrirModal('modal-boleta');
+        }
+
+        function renderKardex() {
+            const tbody = document.getElementById('tabla-kardex');
+            const dashBody = document.getElementById('dash-ultimos-mov');
+            if (tbody) {
+                tbody.innerHTML = kardex.map(k => {
+                    const esEntrada = String(k.tipo).includes("INGRESO") || String(k.tipo).includes("REPOSICIÓN") || String(k.tipo).includes("(+)");
+                    return `
+                    <tr>
+                        <td class="p-3 text-xs text-slate-400">${k.fecha}</td>
+                        <td class="p-3"><span class="text-[11px] font-bold px-2 py-0.5 rounded ${esEntrada ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}">${k.tipo}</span></td>
+                        <td class="p-3 font-semibold text-white"><span class="font-mono text-xs text-slate-400 mr-1">${k.codigo}</span>${k.nombre}</td>
+                        <td class="p-3 font-mono font-bold">${k.cant}</td>
+                        <td class="p-3 font-mono">S/ ${Number(k.unit).toFixed(2)}</td>
+                        <td class="p-3 font-mono font-bold text-blue-400">S/ ${Number(k.total).toFixed(2)}</td>
+                        <td class="p-3 text-xs text-slate-300">${k.detalle}</td>
+                        <td class="p-3 text-xs text-slate-400">${k.usuario}</td>
+                    </tr>`;
+                }).join('');
+            }
+            if (dashBody) {
+                dashBody.innerHTML = kardex.slice(0, 6).map(k => `
+                    <tr>
+                        <td class="p-3 text-xs text-slate-400">${k.fecha}</td>
+                        <td class="p-3 text-xs font-bold text-blue-300">${k.tipo}</td>
+                        <td class="p-3 font-medium text-white">${k.nombre}</td>
+                        <td class="p-3 font-mono font-bold">${k.cant}</td>
+                        <td class="p-3 font-mono text-emerald-400">S/ ${Number(k.total).toFixed(2)}</td>
+                        <td class="p-3 text-xs text-slate-400">${k.detalle}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderCriticos(criticos) {
+            const cont = document.getElementById('lista-criticos');
+            if (!cont) return;
+            if (criticos.length === 0) {
+                cont.innerHTML = `<p class="text-sm text-emerald-400">Todos los materiales están por encima de su stock mínimo.</p>`;
+                return;
+            }
+            cont.innerHTML = criticos.map(m => {
+                const sugerido = Math.max(1, (Number(m.minimo) + 5) - Number(m.stock));
+                return `
+                <div class="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="font-bold text-white">${m.nombre} <span class="text-xs font-mono text-rose-300">(${m.codigo})</span></p>
+                        <p class="text-xs text-rose-200/80">Stock actual: <strong>${m.stock}</strong> • Mínimo: <strong>${m.minimo}</strong> • Sugerido: <strong>+${sugerido}</strong></p>
+                    </div>
+                    <button type="button" onclick="reabastecerUno(${m.id}, ${sugerido})" class="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer">
+                        Reabastecer (+${sugerido})
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        function reabastecerUno(id, cant) {
+            const mat = materiales.find(m => m.id === id);
+            if (!mat) return;
+            mat.stock = Number(mat.stock) + cant;
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: "REPOSICIÓN",
+                codigo: mat.codigo,
+                nombre: mat.nombre,
+                cant: `+${cant}`,
+                unit: Number(mat.precio),
+                total: cant * Number(mat.precio),
+                detalle: "Reposición desde Stock Crítico",
+                usuario: sesion.perfil
+            });
+            persistir();
+            notificar(`Reabastecido +${cant} de ${mat.nombre}`, "ok");
+        }
+
+        function abrirQR(id) {
+            const mat = materiales.find(m => m.id === id);
+            if (!mat) return;
+            document.getElementById('qr-nombre').textContent = mat.nombre;
+            document.getElementById('qr-codigo').textContent = `${mat.codigo} • ${mat.area}`;
+            document.getElementById('qr-stock').textContent = `${mat.stock} und.`;
+            document.getElementById('qr-precio').textContent = `S/ ${Number(mat.precio).toFixed(2)}`;
+
+            const box = document.getElementById('qr-box');
+            box.innerHTML = '';
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(box, {
+                        text: `ALMACENPRO|${mat.codigo}|${mat.nombre}|STOCK:${mat.stock}|PEN:${mat.precio}`,
+                        width: 148,
+                        height: 148
+                    });
+                } else {
+                    box.innerHTML = `<span class="text-xs font-mono text-slate-900 p-6">${mat.codigo}</span>`;
+                }
+            } catch (e) {
+                box.innerHTML = `<span class="text-xs font-mono text-slate-900 p-6">${mat.codigo}</span>`;
+            }
+
+            abrirModal('modal-qr');
+        }
+
+        function guardarMaterial(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('mat-nombre').value.trim();
+            const codigo = document.getElementById('mat-codigo').value.trim();
+            const area = document.getElementById('mat-area').value;
+            const precio = parseFloat(document.getElementById('mat-precio').value);
+            const stock = parseInt(document.getElementById('mat-stock').value, 10);
+            const minimo = parseInt(document.getElementById('mat-min').value, 10);
+
+            const nuevo = {
+                id: Date.now(),
+                codigo,
+                nombre,
+                area,
+                precio,
+                stock,
+                minimo,
+                foto: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&q=80"
+            };
+            materiales.unshift(nuevo);
+            kardex.unshift({
+                fecha: new Date().toLocaleString(),
+                tipo: "INGRESO",
+                codigo,
+                nombre,
+                cant: `+${stock}`,
+                unit: precio,
+                total: stock * precio,
+                detalle: "Alta de nuevo material",
+                usuario: sesion.perfil
+            });
+            e.target.reset();
+            cerrarModal('modal-material');
+            persistir();
+            notificar(`Material ${codigo} guardado`, "ok");
+        }
+
+        function exportarKardexCSV() {
+            let csv = "Fecha,Tipo,Codigo,Material,Cantidad,Precio_PEN,Subtotal_PEN,Detalle,Perfil\n";
+            kardex.forEach(k => {
+                csv += `"${k.fecha}","${k.tipo}","${k.codigo}","${k.nombre}","${k.cant}",${k.unit},${k.total},"${k.detalle}","${k.usuario}"\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'AlmacenPRO_v6_Kardex.csv';
+            a.click();
+            notificar("Kardex exportado a CSV", "ok");
+        }
+
+        function abrirModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function cerrarModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function cerrarPorFondo(event, id) {
+            if (event.target && event.target.id === id) {
+                cerrarModal(id);
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ['modal-cuenta', 'modal-qr', 'modal-material', 'modal-boleta'].forEach(cerrarModal);
+                cerrarSidebarMovil();
+            }
+        });
+
+        seleccionarPerfil(sesion.perfil || "Admin");
+        renderTodo();
+    </script>
+</body>
+</html>
